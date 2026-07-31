@@ -1,17 +1,17 @@
 name: publish to the MCP registry
 
-# NO NPM, NO SECRETS. An .mcpb bundle on a GitHub release (allowlisted artifact host) plus
-# GitHub Actions OIDC — the workflow proves it is this repo by being this repo.
+# NO NPM, NO SECRETS. An .mcpb on a GitHub release plus GitHub Actions OIDC — the workflow
+# proves it is this repo by being this repo.
 #
-# Two failures got us here, both from GUESSING instead of asking:
+# Three failures taught this file, each from guessing rather than asking:
 #   1. pinned mcp-publisher v1.0.0 against a v1.8.0 registry -> 401 token exchange failed
-#   2. constructed the filename as mcp-publisher_1.8.0_linux_amd64.tar.gz -> tar died;
-#      the real asset carries NO version: mcp-publisher_linux_amd64.tar.gz
-# So the URL is now READ FROM THE RELEASE API rather than assembled from a pattern.
+#   2. constructed the asset filename; the real one carries NO version -> tar died
+#   3. `release: [published]` fired a SECOND run alongside workflow_dispatch. It checks out
+#      a detached ref, git failed, and it left a red X on a publish that had already
+#      SUCCEEDED sixty seconds earlier. A false failure is worse than no signal — the next
+#      session reads the X and re-does finished work. One trigger only.
 on:
   workflow_dispatch:
-  release:
-    types: [published]
 
 jobs:
   publish:
@@ -25,10 +25,10 @@ jobs:
         run: |
           URL=$(curl -s https://api.github.com/repos/modelcontextprotocol/registry/releases/latest \
                 | grep -oP '"browser_download_url":\s*"\K[^"]*mcp-publisher_linux_amd64\.tar\.gz(?=")')
-          echo "downloading $URL"
-          curl -sL "$URL" | tar xz mcp-publisher
-          chmod +x mcp-publisher
+          curl -sL "$URL" | tar xz mcp-publisher && chmod +x mcp-publisher
           ./mcp-publisher --version
+      - name: Validate before publishing
+        run: ./mcp-publisher validate
       - name: Authenticate as this repository
         run: ./mcp-publisher login github-oidc
       - name: Publish
