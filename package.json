@@ -1,0 +1,20 @@
+{
+  "name": "akd-vaultpdf-mcp",
+  "version": "1.0.0",
+  "mcpName": "io.github.LifeAbundantly/akd-vaultpdf",
+  "description": "On-device PDF, resume and CSV tools for AI agents. Reads local files on the user's own machine and never uploads them. Refuses to guess: a non-numeric column is declined, not averaged.",
+  "type": "module",
+  "bin": { "akd-vaultpdf-mcp": "./vaultpdf-mcp.mjs" },
+  "main": "./vaultpdf-mcp.mjs",
+  "files": ["vaultpdf-mcp.mjs", "README.md"],
+  "engines": { "node": ">=18" },
+  "license": "SEE LICENSE IN README.md",
+  "keywords": [
+    "mcp", "modelcontextprotocol", "pdf", "redaction", "resume", "ats",
+    "csv", "on-device", "local-files", "privacy"
+  ],
+  "author": "AKDmediaX",
+  "homepage": "https://still-wildflower-dc6f.akdmediax.workers.dev/",
+  "repository": { "type": "git", "url": "git+https://github.com/LifeAbundantly/akd-vaultpdf-mcp.git" },
+  "bugs": { "url": "https://github.com/LifeAbundantly/akd-vaultpdf-mcp/issues" }
+}

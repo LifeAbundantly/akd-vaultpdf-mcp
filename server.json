@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.LifeAbundantly/akd-vaultpdf",
+  "title": "AKD VaultPDF",
+  "description": "Reads PDFs, resumes and CSVs on the user's own machine. Nothing is uploaded. Refuses rather than guesses: pointed at a date column it declines instead of returning a confident wrong total.",
+  "version": "1.0.0",
+  "websiteUrl": "https://still-wildflower-dc6f.akdmediax.workers.dev/",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "akd-vaultpdf-mcp",
+      "version": "1.0.0",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        {
+          "name": "VAULTPDF_SESSION",
+          "description": "Stripe Checkout Session id from a pass purchase (cs_...). Exchanged once for a day/week/month licence token, which is then cached. A pass is $2.22 for a day; there is no free tier for agents, because a client-side counter is not a gate in front of an AI.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "VAULTPDF_TOKEN",
+          "description": "A licence token already minted from a session. Use this instead of VAULTPDF_SESSION once you have one.",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}
