@@ -1,13 +1,13 @@
 name: publish to the MCP registry
 
-# NO NPM, NO SECRETS. The bundle is an .mcpb on a GitHub release (an allowlisted artifact
-# host) and authentication is GitHub Actions OIDC — the workflow proves it is this repo by
-# being this repo.
+# NO NPM, NO SECRETS. An .mcpb bundle on a GitHub release (allowlisted artifact host) plus
+# GitHub Actions OIDC — the workflow proves it is this repo by being this repo.
 #
-# 2026-07-30: the first run failed `401 token exchange failed`. Cause was a PINNED
-# mcp-publisher v1.0.0 against a registry now on v1.8.0 — eight versions of API drift.
-# Always resolve the latest release rather than pinning a version into a workflow that
-# will outlive it.
+# Two failures got us here, both from GUESSING instead of asking:
+#   1. pinned mcp-publisher v1.0.0 against a v1.8.0 registry -> 401 token exchange failed
+#   2. constructed the filename as mcp-publisher_1.8.0_linux_amd64.tar.gz -> tar died;
+#      the real asset carries NO version: mcp-publisher_linux_amd64.tar.gz
+# So the URL is now READ FROM THE RELEASE API rather than assembled from a pattern.
 on:
   workflow_dispatch:
   release:
@@ -23,11 +23,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install the newest MCP publisher
         run: |
-          TAG=$(curl -s https://api.github.com/repos/modelcontextprotocol/registry/releases/latest | grep -oP '"tag_name":\s*"\K[^"]+')
-          echo "publisher $TAG"
-          curl -sL "https://github.com/modelcontextprotocol/registry/releases/download/${TAG}/mcp-publisher_${TAG#v}_linux_amd64.tar.gz" \
-            | tar xz mcp-publisher && chmod +x mcp-publisher
-          ./mcp-publisher --version || true
+          URL=$(curl -s https://api.github.com/repos/modelcontextprotocol/registry/releases/latest \
+                | grep -oP '"browser_download_url":\s*"\K[^"]*mcp-publisher_linux_amd64\.tar\.gz(?=")')
+          echo "downloading $URL"
+          curl -sL "$URL" | tar xz mcp-publisher
+          chmod +x mcp-publisher
+          ./mcp-publisher --version
       - name: Authenticate as this repository
         run: ./mcp-publisher login github-oidc
       - name: Publish
