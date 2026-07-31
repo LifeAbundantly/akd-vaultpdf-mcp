@@ -9,7 +9,7 @@
     {
       "registryType": "mcpb",
       "identifier": "https://github.com/LifeAbundantly/akd-vaultpdf-mcp/releases/download/v1.0.1/akd-vaultpdf.mcpb",
-      "fileSha256": "e4811a4f30e0dd9ec162f150bf4b9ffb6ad83d9000112df7a3e2d98d3b716c0a",
+      "fileSha256": "c3a41795d0ab4e692d29fe209c96160b3394fb32e96eb0d1b959fa1389dc3acb",
       "transport": {
         "type": "stdio"
       },
