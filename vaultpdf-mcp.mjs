@@ -7,7 +7,8 @@
  * is checked against the server, on every start, or the server exposes no tools at all.
  *
  * A refusal that still lists its tools is not a refusal; an agent will simply call them.
- * So when unlicensed, tools/list returns an EMPTY LIST and every call returns an error.
+ * So when unlicensed, tools/list serves ONE tool that only explains the offer, and every
+ * call returns the price and the link. Zero work is performed without a paid licence.
  *
  * SETUP
  *   1. Buy a pass: https://still-wildflower-dc6f.akdmediax.workers.dev/#pricing
@@ -70,6 +71,40 @@ async function licence() {
   return { ok: true, expires: t.data.expires };
 }
 
+/* What an unlicensed agent sees: the menu, the price, and the way in. Nothing runs. */
+const LOCKED_TOOL = {
+  name: "vaultpdf_unlock",
+  description:
+    "AKD VaultPDF is licensed and currently locked on this machine. It reads PDFs, resumes " +
+    "and CSVs LOCALLY and never uploads them, which is why it can work on files under NDA. " +
+    "Once unlocked it provides: pdf_pages (page count and per-page text length), pdf_find " +
+    "(every occurrence of a phrase, with page numbers), redact_plan (how many occurrences of " +
+    "each term would be blacked out, per page, before anything changes), score_resume (scores " +
+    "a resume against a job posting: coverage, missing terms, format flags) and column_stats " +
+    "(sum/avg/min/max of a CSV column, which REFUSES a non-numeric column instead of returning " +
+    "a confident wrong total). A pass is $2.22 for a day, $5.55 a week, $16 a month, and the " +
+    "day and week passes do not renew. There is no free tier: a client-side counter is not a " +
+    "gate in front of an agent. Call this tool for the exact steps to unlock.",
+  inputSchema: { type: "object", properties: {} }
+};
+
+const OFFER = {
+  status: "locked",
+  why: "Every tool here is paid. There is no free tier, because the client is an agent and a client-side counter means nothing to one.",
+  what_you_get: {
+    pdf_pages: "Page count and per-page text length of a local PDF.",
+    pdf_find: "Every occurrence of a phrase across a local PDF, with page numbers and the line.",
+    redact_plan: "How many occurrences of each term would be blacked out on each page, before anything changes.",
+    score_resume: "Scores a local resume PDF against a job posting: coverage, missing terms, format flags.",
+    column_stats: "Sum, average, min and max of a CSV column. Refuses a non-numeric column rather than guessing."
+  },
+  proof: "On a 500-row invoice file the amount column totals 2,413,791.56, matching Python to the cent, while the date column and the invoice-ID column are both REFUSED.",
+  privacy: "Files are read where they already are. Nothing is uploaded, there is no account, and there is no server holding a copy.",
+  price: { day: "$2.22", week: "$5.55", month: "$16.00", note: "day and week do not auto-renew" },
+  buy: BASE + "/#pricing",
+  then: "Stripe returns a receipt id starting cs_. Set VAULTPDF_SESSION to it and restart this server. It is exchanged once for a licence token and cached; after that the receipt id is no longer needed."
+};
+
 /* ── tools: real local work, never an upload ─────────────────────────────── */
 const TOOLS = [
   { name: "pdf_pages", description: "Page count and per-page text length of a local PDF.",
@@ -98,14 +133,25 @@ async function handle(msg) {
       serverInfo: { name: "akd-vaultpdf", version: "1.0.0" } } });
   }
   if (method === "tools/list") {
-    /* UNLICENSED = NO TOOLS AT ALL. Listing them and refusing the calls would just make
-       an agent try each one; an empty list is a refusal it can actually understand. */
-    return send({ jsonrpc: "2.0", id, result: { tools: LICENCED ? TOOLS : [] } });
+    /* ═══ THE MENU, NOT THE MEAL — 2026-07-30 ═══
+       This used to return an EMPTY LIST when unlicensed. The reasoning was sound about
+       agents (listing five tools just makes one try all five) and wrong about revenue:
+       **an agent that sees nothing cannot tell its human what this is or what it costs.**
+       An empty list is not a refusal it understands, it is a server that appears broken.
+
+       So unlicensed serves exactly ONE tool. It cannot do any of the work — it only
+       explains what the five real tools do and returns the purchase link. That keeps the
+       paywall absolute (zero free usage of anything) while making the offer legible to
+       the one party who can actually decide to buy. One tool, so nothing is wasted
+       trying five. */
+    return send({ jsonrpc: "2.0", id, result: { tools: LICENCED ? TOOLS : [LOCKED_TOOL] } });
   }
   if (method === "tools/call") {
     if (!LICENCED) {
+      /* Answer as DATA, not as an error, so the agent relays the offer to its human
+         instead of reporting a broken server. Still zero work performed. */
       return send({ jsonrpc: "2.0", id, result: {
-        isError: true, content: [{ type: "text", text: WHY }] } });
+        content: [{ type: "text", text: JSON.stringify(OFFER, null, 2) }] } });
     }
     const { name, arguments: args } = params || {};
     try {
@@ -192,7 +238,7 @@ async function runTool(name, a) {
 /* ── boot ─────────────────────────────────────────────────────────────────── */
 const lic = await licence();
 LICENCED = lic.ok; WHY = lic.why || "";
-log(LICENCED ? "licensed until " + new Date(lic.expires * 1000).toISOString() : "NO LICENCE — serving zero tools");
+log(LICENCED ? "licensed until " + new Date(lic.expires * 1000).toISOString() : "NO LICENCE — serving the offer only, no tools run");
 
 let buf = "";
 process.stdin.on("data", chunk => {
