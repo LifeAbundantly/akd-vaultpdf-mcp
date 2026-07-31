@@ -1,34 +1,27 @@
-name: publish
+name: publish to the MCP registry
 
-# Publishes to npm, then registers with the Official MCP Registry using GitHub Actions
-# OIDC — which is why no browser and no interactive login is ever needed. The ONLY secret
-# this needs is NPM_TOKEN; the registry side authenticates as this repo's own identity.
+# NO NPM. The bundle is an .mcpb attached to a GitHub release, which the official registry
+# accepts directly (GitHub releases are an allowlisted artifact host). Authentication is
+# GitHub Actions OIDC, so there is no browser login and NO SECRET OF ANY KIND to supply —
+# the workflow proves it is this repo by being this repo.
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
+  release:
+    types: [published]
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write          # required for both npm provenance and registry OIDC
+      id-token: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          registry-url: https://registry.npmjs.org
-      - name: Publish to npm
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Install the MCP publisher
         run: |
           curl -sL "https://github.com/modelcontextprotocol/registry/releases/download/v1.0.0/mcp-publisher_1.0.0_linux_amd64.tar.gz" \
             | tar xz mcp-publisher && chmod +x mcp-publisher
-      - name: Register with the Official MCP Registry
-        run: |
-          ./mcp-publisher login github-oidc
-          ./mcp-publisher publish
+      - name: Authenticate as this repository
+        run: ./mcp-publisher login github-oidc
+      - name: Publish
+        run: ./mcp-publisher publish
